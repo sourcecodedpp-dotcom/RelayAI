@@ -1,0 +1,157 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-heading: 'Space Grotesk', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+}
+
+/* Base style resets */
+html, body {
+  font-family: var(--font-body);
+  background-color: var(--background);
+  color: var(--foreground);
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+/* Custom premium visual elements matching the design system */
+.glass-card {
+  background: rgba(20, 20, 25, 0.6);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-card-hover {
+  transition: all 0.2s ease;
+}
+.glass-card-hover:hover {
+  border-color: rgba(255, 255, 255, 0.2); /* Monochrome white glow */
+  box-shadow: 0 12px 40px 0 rgba(255, 255, 255, 0.03);
+  transform: translateY(-2px);
+}
+
+/* Glow overlays */
+.glow-indigo {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.03) 0%, transparent 70%);
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+.glow-emerald {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.02) 0%, transparent 70%);
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+/* Ambient canvas stars */
+.starfield {
+  background-image: 
+    radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 40px),
+    radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 30px),
+    radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 40px);
+  background-size: 550px 550px, 350px 350px, 250px 250px;
+  background-position: 0 0, 40px 60px, 130px 270px;
+  opacity: 0.04;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@layer base {
+  .theme {
+    --font-heading: var(--font-sans);
+    --font-sans: var(--font-sans);
+  }
+  :root {
+    --background: #000000;
+    --foreground: #f7f7f4;
+    --card: #0a0a0c;
+    --card-foreground: #e6e5e0;
+    --popover: #0a0a0c;
+    --popover-foreground: #e6e5e0;
+    --primary: #ffffff;
+    --primary-foreground: #000000;
+    --secondary: #111113;
+    --secondary-foreground: #f7f7f4;
+    --muted: #111113;
+    --muted-foreground: #807d72;
+    --accent: #111113;
+    --accent-foreground: #ffffff;
+    --destructive: #cf2d56;
+    --border: rgba(247, 247, 244, 0.08);
+    --input: rgba(247, 247, 244, 0.05);
+    --ring: #ffffff;
+    --radius: 0.5rem;
+    --sidebar: #000000;
+    --sidebar-foreground: #e6e5e0;
+    --sidebar-primary: #ffffff;
+    --sidebar-primary-foreground: #000000;
+    --sidebar-accent: #111113;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: rgba(247, 247, 244, 0.08);
+    --sidebar-ring: #ffffff;
+  }
+  .dark {
+    --background: #000000;
+    --foreground: #f7f7f4;
+    --card: #0a0a0c;
+    --card-foreground: #e6e5e0;
+    --popover: #0a0a0c;
+    --popover-foreground: #e6e5e0;
+    --primary: #ffffff;
+    --primary-foreground: #000000;
+    --secondary: #111113;
+    --secondary-foreground: #f7f7f4;
+    --muted: #111113;
+    --muted-foreground: #807d72;
+    --accent: #111113;
+    --accent-foreground: #ffffff;
+    --destructive: #cf2d56;
+    --border: rgba(247, 247, 244, 0.08);
+    --input: rgba(247, 247, 244, 0.05);
+    --ring: #ffffff;
+    --sidebar: #000000;
+    --sidebar-foreground: #e6e5e0;
+    --sidebar-primary: #ffffff;
+    --sidebar-primary-foreground: #000000;
+    --sidebar-accent: #111113;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: rgba(247, 247, 244, 0.08);
+    --sidebar-ring: #ffffff;
+  }
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
