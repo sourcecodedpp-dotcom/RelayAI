@@ -3,6 +3,7 @@ import { getAuthenticatedUserOrThrow } from "@/lib/auth/session";
 import { db } from "@/lib/db/firestore";
 import { handleApiError, ApiError } from "@/lib/security/errors";
 import { MissionBackgroundProcessor } from "@/lib/ai/orchestration/mission-background";
+import { publishRCPEvent } from "@/lib/rcp/processor";
 
 export const dynamic = "force-dynamic";
 import { FollowUpStatus, AuditAction, OpportunityStatus } from "@/types";
@@ -84,6 +85,17 @@ export async function POST(req: Request) {
 
     await followupRef.set(followupData);
 
+    try {
+      await publishRCPEvent(userId, "follow_up_created", {
+        followUpId: followupRef.id,
+        title: validated.title,
+        contactId: validated.contactId,
+        scheduledAt: validated.scheduledAt,
+      });
+    } catch (e) {
+      console.warn("Failed to publish follow_up_created RCP event:", e);
+    }
+
     if (missionId) {
       await MissionBackgroundProcessor.logEvent(
         userId,
@@ -139,6 +151,17 @@ export async function PATCH(req: Request) {
     };
 
     await followupRef.update(updatedData);
+
+    if (validated.status === FollowUpStatus.COMPLETED) {
+      try {
+        await publishRCPEvent(userId, "follow_up_completed", {
+          followUpId: validated.id,
+          title: existing.title || null,
+        });
+      } catch (e) {
+        console.warn("Failed to publish follow_up_completed RCP event:", e);
+      }
+    }
 
     // If completed, dismiss the corresponding opportunity in the briefing engine
     if (validated.status === FollowUpStatus.COMPLETED) {

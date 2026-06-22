@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Sparkles, Terminal, X, Loader2 } from "lucide-react";
+import { Sparkles, Terminal, X } from "lucide-react";
+import { LemniscateLoader } from "@/components/lemniscate-loader";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
 
@@ -151,8 +152,7 @@ export function CommandBar() {
         {/* Loading Indicator */}
         {isLoading && (
           <div className="p-8 text-center text-sm text-gray-400 font-mono flex flex-col items-center justify-center gap-2">
-            <Loader2 className="animate-spin text-white" size={24} />
-            <span>Relay AI routing your request...</span>
+            <LemniscateLoader size="md" label="Relay AI routing your request" className="text-white" />
           </div>
         )}
 

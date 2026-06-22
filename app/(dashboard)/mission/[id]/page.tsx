@@ -7,7 +7,6 @@ import {
     Paperclip,
     SendIcon,
     XIcon,
-    LoaderIcon,
     Sparkles,
     Command,
     Globe,
@@ -20,6 +19,7 @@ import {
     ChevronLeft,
     AlertTriangle,
 } from "lucide-react";
+import { LemniscateLoader } from "@/components/lemniscate-loader";
 import { motion, AnimatePresence } from "framer-motion";
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
@@ -281,9 +281,9 @@ export default function MissionPage() {
     const commandSuggestions: CommandSuggestion[] = [
         { 
             icon: <Sparkles className="w-4 h-4" />, 
-            label: "Briefing", 
-            description: "Show strategic dashboard & briefing", 
-            prefix: "/briefing" 
+            label: "Home", 
+            description: "Go to home chat screen", 
+            prefix: "/" 
         },
         { 
             icon: <Mail className="w-4 h-4" />, 
@@ -372,6 +372,13 @@ export default function MissionPage() {
 
     useEffect(() => {
         loadMissionData(true);
+        
+        // Setup polling every 3 seconds to fetch live background agent events
+        const pollInterval = setInterval(() => {
+            loadMissionData(false);
+        }, 3000);
+        
+        return () => clearInterval(pollInterval);
     }, [loadMissionData]);
 
     useEffect(() => {
@@ -628,10 +635,7 @@ export default function MissionPage() {
     if (loading) {
         return (
             <div className="min-h-[calc(100vh-140px)] flex flex-col w-full items-center justify-center bg-transparent text-white p-6 relative">
-                <LoaderIcon className="w-8 h-8 animate-spin text-white/40" />
-                <span className="text-xs tracking-widest font-mono text-white/30 mt-3 uppercase animate-pulse">
-                    Loading Workspace...
-                </span>
+                <LemniscateLoader size="lg" label="Loading Workspace" className="text-white/60" />
             </div>
         );
     }
@@ -642,8 +646,8 @@ export default function MissionPage() {
                 <div className="text-center space-y-4 max-w-md mx-auto">
                     <h1 className="text-2xl font-medium tracking-tight text-white/90">Workspace not found</h1>
                     <p className="text-sm text-white/40">This mission workspace does not exist or you don't have access to it.</p>
-                    <Link href="/briefing" className="inline-flex items-center gap-2 mt-4 px-4 py-2 border border-white/10 rounded-lg text-xs font-mono font-bold tracking-wider hover:bg-white/5 transition">
-                        <ChevronLeft className="w-4 h-4" /> RETURN TO BRIEFING
+                    <Link href="/" className="inline-flex items-center gap-2 mt-4 px-4 py-2 border border-white/10 rounded-lg text-xs font-mono font-bold tracking-wider hover:bg-white/5 transition">
+                        <ChevronLeft className="w-4 h-4" /> RETURN TO HOME
                     </Link>
                 </div>
             </div>
@@ -659,8 +663,8 @@ export default function MissionPage() {
             </div>
             
             <div className="w-full max-w-2xl mx-auto relative select-none flex justify-start mb-6">
-                <Link href="/briefing" className="flex items-center gap-1.5 text-xs font-mono text-white/40 hover:text-white/80 transition-colors">
-                    <ChevronLeft className="w-3.5 h-3.5" /> Back to Briefing
+                <Link href="/" className="flex items-center gap-1.5 text-xs font-mono text-white/40 hover:text-white/80 transition-colors">
+                    <ChevronLeft className="w-3.5 h-3.5" /> Back to Home
                 </Link>
             </div>
 
@@ -745,11 +749,7 @@ export default function MissionPage() {
                                                 msg.sender === "user" ? "justify-end" : "justify-start"
                                             )}
                                         >
-                                            {msg.sender === "ai" && (
-                                                <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-mono font-bold text-white shrink-0 mt-0.5 shadow-md">
-                                                    zap
-                                                </div>
-                                            )}
+
 
                                             <div
                                                 className={cn(
@@ -790,11 +790,7 @@ export default function MissionPage() {
                                                 )}
                                             </div>
 
-                                            {msg.sender === "user" && (
-                                                <div className="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-[10px] font-mono font-bold text-white shrink-0 mt-0.5 shadow-md">
-                                                    US
-                                                </div>
-                                            )}
+
                                         </motion.div>
                                     );
                                 })}
@@ -803,7 +799,7 @@ export default function MissionPage() {
                     )}
 
                     <motion.div 
-                        className="relative backdrop-blur-2xl bg-white/[0.02] rounded-2xl border border-white/[0.05] shadow-2xl"
+                        className="relative backdrop-blur-2xl bg-white/[0.03] rounded-xl border border-white/10 shadow-lg flex items-end gap-2 p-2 pl-4"
                         initial={{ scale: 0.98 }}
                         animate={{ scale: 1 }}
                         transition={{ delay: 0.1 }}
@@ -812,13 +808,13 @@ export default function MissionPage() {
                             {showCommandPalette && (
                                 <motion.div 
                                     ref={commandPaletteRef}
-                                    className="absolute left-4 right-4 bottom-full mb-2 backdrop-blur-xl bg-black/90 rounded-lg z-50 shadow-lg border border-white/10 overflow-hidden"
+                                    className="absolute left-0 right-0 bottom-full mb-2 backdrop-blur-xl bg-black/95 rounded-lg z-50 shadow-lg border border-white/10 overflow-hidden"
                                     initial={{ opacity: 0, y: 5 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: 5 }}
                                     transition={{ duration: 0.15 }}
                                 >
-                                    <div className="py-1 bg-black/95">
+                                    <div className="py-1">
                                         {commandSuggestions.map((suggestion, index) => (
                                             <motion.div
                                                 key={suggestion.prefix}
@@ -829,15 +825,12 @@ export default function MissionPage() {
                                                         : "text-white/70 hover:bg-white/5"
                                                 )}
                                                 onClick={() => selectCommandSuggestion(index)}
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                transition={{ delay: index * 0.03 }}
                                             >
-                                                <div className="w-5 h-5 flex items-center justify-center text-white/60">
+                                                <div className="w-4 h-4 flex items-center justify-center text-white/60">
                                                     {suggestion.icon}
                                                 </div>
-                                                <div className="font-medium">{suggestion.label}</div>
-                                                <div className="text-white/40 text-xs ml-1">
+                                                <div className="font-medium text-[11px]">{suggestion.label}</div>
+                                                <div className="text-white/40 text-[10px] ml-auto font-mono">
                                                     {suggestion.prefix}
                                                 </div>
                                             </motion.div>
@@ -847,40 +840,10 @@ export default function MissionPage() {
                             )}
                         </AnimatePresence>
 
-                        <div className="p-4">
-                            <Textarea
-                                ref={textareaRef}
-                                value={value}
-                                onChange={(e) => {
-                                    setValue(e.target.value);
-                                    adjustHeight();
-                                }}
-                                onKeyDown={handleKeyDown}
-                                onFocus={() => setInputFocused(true)}
-                                onBlur={() => setInputFocused(false)}
-                                placeholder="Ask zap a question in this workspace..."
-                                containerClassName="w-full"
-                                className={cn(
-                                    "w-full px-4 py-3",
-                                    "resize-none",
-                                    "bg-transparent",
-                                    "border-none",
-                                    "text-white/90 text-sm",
-                                    "focus:outline-none",
-                                    "placeholder:text-white/20",
-                                    "min-h-[60px]"
-                                )}
-                                style={{
-                                    overflow: "hidden",
-                                }}
-                                showRing={false}
-                            />
-                        </div>
-
                         <AnimatePresence>
                             {attachments.length > 0 && (
                                 <motion.div 
-                                    className="px-4 pb-3 flex gap-2 flex-wrap"
+                                    className="absolute bottom-full left-0 right-0 mb-2 p-2 bg-zinc-950/90 border border-white/10 rounded-xl flex gap-2 flex-wrap z-40"
                                     initial={{ opacity: 0, height: 0 }}
                                     animate={{ opacity: 1, height: "auto" }}
                                     exit={{ opacity: 0, height: 0 }}
@@ -906,193 +869,56 @@ export default function MissionPage() {
                             )}
                         </AnimatePresence>
 
-                        <div className="p-4 border-t border-white/[0.05] flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-3">
-                                <motion.button
-                                    type="button"
-                                    onClick={handleAttachFile}
-                                    whileTap={{ scale: 0.94 }}
-                                    className="p-2 text-white/40 hover:text-white/90 rounded-lg transition-colors relative group"
-                                >
-                                    <Paperclip className="w-4 h-4" />
-                                    <motion.span
-                                        className="absolute inset-0 bg-white/[0.05] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                                        layoutId="button-highlight"
-                                    />
-                                </motion.button>
-                                <motion.button
-                                    type="button"
-                                    data-command-button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowCommandPalette(prev => !prev);
-                                    }}
-                                    whileTap={{ scale: 0.94 }}
-                                    className={cn(
-                                        "p-2 text-white/40 hover:text-white/90 rounded-lg transition-colors relative group",
-                                        showCommandPalette && "bg-white/10 text-white/90"
-                                    )}
-                                >
-                                    <Command className="w-4 h-4" />
-                                    <motion.span
-                                        className="absolute inset-0 bg-white/[0.05] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                                        layoutId="button-highlight"
-                                    />
-                                </motion.button>
-
-                                {/* Model Selector Dropdown */}
-                                <div className="relative">
-                                    <motion.button
-                                        type="button"
-                                        onClick={() => setShowModelDropdown(prev => !prev)}
-                                        whileTap={{ scale: 0.94 }}
-                                        className={cn(
-                                            "px-2.5 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 rounded-lg text-[11px] text-white/70 font-mono transition-colors flex items-center gap-1.5",
-                                            showModelDropdown && "bg-white/10 text-white"
-                                        )}
-                                    >
-                                        <Sparkles className="w-3.5 h-3.5 text-violet-400" />
-                                        <span className="max-w-[100px] truncate">{selectedModel === "mercury-2" ? "Relay Cloud" : selectedModel}</span>
-                                        <span className="text-[8px] text-white/30">▼</span>
-                                    </motion.button>
-                                    
-                                    <AnimatePresence>
-                                        {showModelDropdown && (
-                                            <motion.div
-                                                initial={{ opacity: 0, y: 5 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, y: 5 }}
-                                                transition={{ duration: 0.15 }}
-                                                className="absolute bottom-full left-0 mb-2 w-56 rounded-xl bg-zinc-950 border border-white/10 shadow-2xl p-1.5 z-50 flex flex-col gap-1 backdrop-blur-xl"
-                                            >
-                                                <div className="px-2 py-1 text-[9px] font-mono text-zinc-500 uppercase tracking-wider">
-                                                    Select AI Model
-                                                </div>
-                                                
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setSelectedProvider("system");
-                                                        setSelectedModel("mercury-2");
-                                                        setShowModelDropdown(false);
-                                                    }}
-                                                    className={cn(
-                                                        "w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between",
-                                                        selectedModel === "mercury-2" ? "bg-white/10 text-white font-medium" : "text-zinc-400 hover:bg-white/5 hover:text-white"
-                                                    )}
-                                                >
-                                                    <span>Relay Cloud (Mercury 2)</span>
-                                                    {selectedModel === "mercury-2" && <span className="text-[10px] text-emerald-400">✓</span>}
-                                                </button>
-                                                
-                                                <div className="border-t border-white/5 my-1" />
-                                                
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setSelectedProvider("gemini");
-                                                        setSelectedModel("gemini-2.5-pro");
-                                                        setShowModelDropdown(false);
-                                                    }}
-                                                    className={cn(
-                                                        "w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between",
-                                                        selectedModel === "gemini-2.5-pro" ? "bg-white/10 text-white font-medium" : "text-zinc-400 hover:bg-white/5 hover:text-white"
-                                                    )}
-                                                >
-                                                    <span>Gemini 2.5 Pro</span>
-                                                    {selectedModel === "gemini-2.5-pro" && <span className="text-[10px] text-emerald-400">✓</span>}
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setSelectedProvider("openai");
-                                                        setSelectedModel("gpt-4o");
-                                                        setShowModelDropdown(false);
-                                                    }}
-                                                    className={cn(
-                                                        "w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between",
-                                                        selectedModel === "gpt-4o" ? "bg-white/10 text-white font-medium" : "text-zinc-400 hover:bg-white/5 hover:text-white"
-                                                    )}
-                                                >
-                                                    <span>GPT-4o</span>
-                                                    {selectedModel === "gpt-4o" && <span className="text-[10px] text-emerald-400">✓</span>}
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setSelectedProvider("anthropic");
-                                                        setSelectedModel("claude-3-5-sonnet-latest");
-                                                        setShowModelDropdown(false);
-                                                    }}
-                                                    className={cn(
-                                                        "w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between",
-                                                        selectedModel === "claude-3-5-sonnet-latest" ? "bg-white/10 text-white font-medium" : "text-zinc-400 hover:bg-white/5 hover:text-white"
-                                                    )}
-                                                >
-                                                    <span>Claude Sonnet</span>
-                                                    {selectedModel === "claude-3-5-sonnet-latest" && <span className="text-[10px] text-emerald-400">✓</span>}
-                                                </button>
-
-                                                {/* Dynamic OpenRouter models */}
-                                                {providersData?.connections?.openrouter?.connected && providersData?.models?.openrouter?.length > 0 && (
-                                                    <>
-                                                        <div className="border-t border-white/5 my-1" />
-                                                        <div className="px-2 py-1 text-[9px] font-mono text-zinc-500 uppercase tracking-wider">
-                                                            OpenRouter Models
-                                                        </div>
-                                                        <div className="max-h-36 overflow-y-auto flex flex-col gap-0.5">
-                                                            {providersData.models.openrouter.slice(0, 8).map((m: any) => (
-                                                                <button
-                                                                    key={m.model}
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        setSelectedProvider("openrouter");
-                                                                        setSelectedModel(m.model);
-                                                                        setShowModelDropdown(false);
-                                                                    }}
-                                                                    className={cn(
-                                                                        "w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between truncate",
-                                                                        selectedModel === m.model ? "bg-white/10 text-white font-medium" : "text-zinc-400 hover:bg-white/5 hover:text-white"
-                                                                    )}
-                                                                    title={m.name || m.model}
-                                                                >
-                                                                    <span className="truncate">{m.name || m.model}</span>
-                                                                    {selectedModel === m.model && <span className="text-[10px] text-emerald-400">✓</span>}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                            </div>
-                            
-                            <motion.button
-                                type="button"
-                                onClick={handleSendMessage}
-                                whileHover={{ scale: 1.01 }}
-                                whileTap={{ scale: 0.98 }}
-                                disabled={isTyping || !value.trim()}
+                        <div className="flex-grow flex items-center">
+                            <Textarea
+                                ref={textareaRef}
+                                value={value}
+                                onChange={(e) => {
+                                    setValue(e.target.value);
+                                    adjustHeight();
+                                }}
+                                onKeyDown={handleKeyDown}
+                                onFocus={() => setInputFocused(true)}
+                                onBlur={() => setInputFocused(false)}
+                                placeholder="Ask Relay AI..."
+                                containerClassName="w-full"
                                 className={cn(
-                                    "px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                                    "flex items-center gap-2",
-                                    value.trim()
-                                        ? "bg-white text-[#0A0A0B] shadow-lg shadow-white/10"
-                                        : "bg-white/[0.05] text-white/40"
+                                    "w-full py-2 px-0",
+                                    "resize-none",
+                                    "bg-transparent",
+                                    "border-none",
+                                    "text-white/90 text-sm",
+                                    "focus:outline-none focus:ring-0 focus-visible:ring-0",
+                                    "placeholder:text-white/20",
+                                    "min-h-[36px] max-h-[160px]"
                                 )}
-                            >
-                                {isTyping ? (
-                                    <LoaderIcon className="w-4 h-4 animate-[spin_2s_linear_infinite]" />
-                               ) : (
-                                    <SendIcon className="w-4 h-4" />
-                                )}
-                                <span>Send</span>
-                            </motion.button>
+                                style={{
+                                    overflow: "hidden",
+                                    boxShadow: "none"
+                                }}
+                                showRing={false}
+                            />
                         </div>
+
+                        <motion.button
+                            type="button"
+                            onClick={handleSendMessage}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            disabled={isTyping || !value.trim()}
+                            className={cn(
+                                "p-2 rounded-lg transition-all shrink-0 mb-0.5",
+                                value.trim()
+                                    ? "bg-white text-black"
+                                    : "bg-white/5 text-white/30"
+                            )}
+                        >
+                            {isTyping ? (
+                                <LemniscateLoader size="sm" className="text-current" />
+                            ) : (
+                                <SendIcon className="w-4 h-4" />
+                            )}
+                        </motion.button>
                     </motion.div>
                 </motion.div>
             </div>
@@ -1106,11 +932,11 @@ export default function MissionPage() {
                         exit={{ opacity: 0, y: 20 }}
                     >
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-7 rounded-full bg-white/[0.05] flex items-center justify-center text-center">
-                                <span className="text-xs font-medium text-white/90 mb-0.5">zap</span>
+                            <div className="w-8 h-7 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 flex items-center justify-center text-center shadow-md">
+                                <Sparkles className="w-3.5 h-3.5 text-white" />
                             </div>
                             <div className="flex items-center gap-2 text-sm text-white/70">
-                                <span>Thinking</span>
+                                <span>Relay AI is thinking</span>
                                 <TypingDots />
                             </div>
                         </div>

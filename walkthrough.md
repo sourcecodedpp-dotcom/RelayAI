@@ -152,3 +152,15 @@ npx tsc --noEmit
 npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) to view your Daily Briefing.
+
+---
+
+## 8. Autonomous Swarm UI & Response Enhancements
+
+We have polished the autonomous swarm system to ensure a professional, premium user experience:
+* **De-cluttering intermediate system events**: Suppressed intermediate tool logs (e.g. search updates, contact creation logs) from being written to the conversation message thread when `isChat` is true. The chat feed remains perfectly clean while the typing indicator shows real-time progress.
+* **Minimalist Chat Layout (No Avatars/Logos)**: Completely removed the avatar logo circles on both sides (the user's "US" bubble and the assistant's sparkle avatar) in the chat page, briefing page, and mission page conversations. Messages now align cleanly to the right (user) and left (assistant) edges for a modern, sleek interface.
+* **Workspace Navigation Polish**: Restored the clean capability links (Orbits, Outreach, Inbox/Email, and API Monitor) to the sidebar navigation using the matching sleek layout, while keeping the "Briefing" and dedicated "Follow-ups" page links hidden to reduce visual noise.
+* **Unified Profile & Settings Panel**: Merged all profile details (editable user name, avatar, account metrics, stats summary cards) with the preferences, connections, and strategic objectives forms into a single high-fidelity `/settings` dashboard. Relabeled the sidebar footer action to **"Profile & Settings"**.
+* **Mini Sidebar Layout & Collapsible Toggles**: Completely redesigned the sidebar panel into a compact, minimalist layout matching the user's design reference (width `w-64`, outline-style New Conversation button, collapsible history panel, and clean nav links). Added full collapse support where clicking the chevron icon slides out the sidebar completely (`w-0`). A floating Menu icon at the top left of the content view lets users expand the sidebar back. Fixed viewport offsets in the chat view adapt dynamically using a CSS variable (`--sidebar-width`). Enabled scroll support (`max-h-[350px] overflow-y-auto`) inside the expanded history list.
+* **Elevated Output Brilliance & Creativity**: Refined Swarm Coordinator prompt guidelines to produce a beautifully formatted markdown dossier on completion. The response includes an Investor Match Dossier (with thesis alignment and check sizes), a checklist of automated database records created, a fully customized outreach email preview resolving RCP context placeholders, and actionable creative tips.

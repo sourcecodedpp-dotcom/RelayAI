@@ -4,9 +4,12 @@ export class OpenAIProvider implements AiProvider {
   private apiKey: string;
   private model: string;
 
-  constructor(apiKey: string, model: string = "gpt-4o") {
+  private baseURL: string;
+
+  constructor(apiKey: string, model: string = "gpt-4o", baseURL: string = "https://api.openai.com/v1") {
     this.apiKey = apiKey;
     this.model = model;
+    this.baseURL = baseURL.endsWith("/") ? baseURL.slice(0, -1) : baseURL;
   }
 
   async generate(params: GenerateParams): Promise<AiResponse> {
@@ -14,7 +17,7 @@ export class OpenAIProvider implements AiProvider {
       throw new Error("OpenAI API key is not configured.");
     }
 
-    const url = "https://api.openai.com/v1/chat/completions";
+    const url = `${this.baseURL}/chat/completions`;
     const messages: Array<{ role: string; content: string }> = [];
 
     if (params.systemInstruction) {

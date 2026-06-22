@@ -1,4 +1,4 @@
-import { AiProvider, GenerateParams, AiResponse } from "./base";
+import { AiProvider, GenerateParams, AiResponse } from "./base-provider";
 
 export class MockProvider implements AiProvider {
   async generate(params: GenerateParams): Promise<AiResponse> {
@@ -26,12 +26,12 @@ export class MockProvider implements AiProvider {
           success: true,
           type: "command_result",
           title: "Assistant Chat",
-          summary: "Hello! I am Relay AI, your chief of staff assistant. How can I help you today?\n\nYou can use commands like:\n- **Draft outreach to Sarah Chen** to write emails.\n- **Show priorities** or **daily briefing** to check updates.\n- **View orbits** or **relationships** to check your contact canvas.",
+          summary: "Hello! I am Relay AI, your email outreach assistant. Who are we reaching out to today?\n\nYou can use commands like:\n- **Draft outreach to Sarah Chen** to write emails.\n- **Show priorities** or **daily briefing** to check updates.\n- **View orbits** or **relationships** to check your contact canvas.",
           actions: [],
           data: {
             intent: "conversational_chat",
             contactName: null,
-            message: "Hello! I am Relay AI, your chief of staff assistant. How can I help you today?\n\nYou can use commands like:\n- **Draft outreach to Sarah Chen** to write emails.\n- **Show priorities** or **daily briefing** to check updates.\n- **View orbits** or **relationships** to check your contact canvas."
+            message: "Hello! I am Relay AI, your email outreach assistant. Who are we reaching out to today?\n\nYou can use commands like:\n- **Draft outreach to Sarah Chen** to write emails.\n- **Show priorities** or **daily briefing** to check updates.\n- **View orbits** or **relationships** to check your contact canvas."
           }
         });
       } else if (promptLower.includes("sarah") || promptLower.includes("draft")) {

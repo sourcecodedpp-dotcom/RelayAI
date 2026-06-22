@@ -1,6 +1,7 @@
 import { db } from "@/lib/db/firestore";
 import { getProvider } from "@/lib/ai/providers/base";
 import { sanitizeFirestore } from "@/lib/utils/sanitize-firestore";
+import { publishRCPEvent } from "@/lib/rcp/processor";
 
 export class ChatBackgroundProcessor {
   /**
@@ -252,6 +253,17 @@ export class ChatBackgroundProcessor {
           stack: error instanceof Error ? error.stack : undefined,
         });
         throw error;
+      }
+
+      try {
+        await publishRCPEvent(userId, "conversation_updated", {
+          conversationId,
+          goal: goals.length > 0 ? goals[0] : null,
+          summary,
+          entities: [...contacts, ...companies, ...entities],
+        });
+      } catch (rcpErr) {
+        console.warn("Failed to publish conversation_updated RCP event:", rcpErr);
       }
 
       console.log(`[ChatBackground] Successfully updated summary and memory for conversation ${conversationId}`);

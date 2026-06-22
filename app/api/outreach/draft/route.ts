@@ -3,6 +3,7 @@ import { getAuthenticatedUserOrThrow } from "@/lib/auth/session";
 import { db } from "@/lib/db/firestore";
 import { handleApiError, ApiError } from "@/lib/security/errors";
 import { MissionBackgroundProcessor } from "@/lib/ai/orchestration/mission-background";
+import { publishRCPEvent } from "@/lib/rcp/processor";
 
 export const dynamic = "force-dynamic";
 import { OutreachAgent } from "@/lib/ai/agents/outreach-agent";
@@ -131,6 +132,17 @@ export async function POST(req: Request) {
       goalId: goalDoc.id,
       updatedAt: now,
     });
+
+    try {
+      await publishRCPEvent(userId, "contact_updated", {
+        contactId: validated.contactId,
+        name: contact?.name || null,
+        status: RelationshipStatus.CONTACTED,
+        relationshipStatus: RelationshipStatus.CONTACTED,
+      });
+    } catch (e) {
+      console.warn("Failed to publish contact_updated RCP event:", e);
+    }
 
     // 8. Log outreach event to the Audit Trail
     const userAgent = req.headers.get("user-agent") || null;

@@ -10,12 +10,12 @@ import {
   Settings, 
   Terminal, 
   Sparkles, 
-  Loader2, 
   ChevronDown, 
   ChevronUp,
   Inbox,
   User
 } from "lucide-react";
+import { LemniscateLoader } from "@/components/lemniscate-loader";
 import { toast } from "@/lib/toast";
 
 interface LogEntry {
@@ -127,7 +127,7 @@ export function AgentConsole() {
         const intent = data.data?.intent || data.intent || "unknown";
         const firstAction = data.actions?.[0];
         const actionType = firstAction?.type || data.action || "redirect";
-        const actionUrl = firstAction?.url || data.url || "/briefing";
+        const actionUrl = firstAction?.url || data.url || "/";
         const message = data.summary || data.message || data.data?.message || "Command executed successfully.";
 
         addLog("agent", `Intent classified as: "${intent}"`, "success");
@@ -161,8 +161,7 @@ export function AgentConsole() {
 
 
   const quickChips = [
-    { label: "Briefing", icon: Zap, url: "/briefing" },
-    { label: "Orbits Canvas", icon: Globe, url: "/relationships" },
+    { label: "Orbits Canvas", icon: Globe, url: "/opportunities" },
     { label: "Outreach Studio", icon: Mail, url: "/outreach" },
     { label: "Reminders", icon: Clock, url: "/follow-ups" },
     { label: "Inbox", icon: Inbox, url: "/gmail" },
@@ -171,7 +170,7 @@ export function AgentConsole() {
   ];
 
   // Hide the layout header console on the main chat screen to avoid redundancy
-  if (pathname === "/briefing") {
+  if (pathname === "/") {
     return null;
   }
 
@@ -225,7 +224,7 @@ export function AgentConsole() {
             />
 
             {isLoading ? (
-              <Loader2 className="animate-spin text-white/40" size={16} />
+              <LemniscateLoader size="sm" className="text-white/40" />
             ) : (
               <button 
                 type="submit"

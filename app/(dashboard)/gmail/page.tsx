@@ -11,13 +11,13 @@ import {
   RefreshCw, 
   Sparkles, 
   CornerUpLeft, 
-  Loader2, 
   CheckCircle2, 
   ArrowLeft,
   Mail,
   User,
   Plus
 } from "lucide-react";
+import { LemniscateLoader } from "@/components/lemniscate-loader";
 import { toast } from "@/lib/toast";
 
 interface Thread {
@@ -66,15 +66,26 @@ export default function GmailPage() {
     data: threadsData, 
     isLoading: isThreadsLoading, 
     isRefetching: isThreadsRefetching, 
+    isError: isThreadsError,
+    error: threadsError,
     refetch: refetchThreads 
-  } = useQuery<{ connected: boolean; threads: Thread[] }>({
+  } = useQuery<{ connected: boolean; threads: Thread[] }, any>({
     queryKey: ["gmail-threads", folder, searchQuery],
     queryFn: async () => {
       const qParams = new URLSearchParams({ folder });
       if (searchQuery) qParams.append("q", searchQuery);
       
       const res = await fetch(`/api/gmail/threads?${qParams.toString()}`);
-      if (!res.ok) throw new Error("Failed to fetch Gmail threads.");
+      if (!res.ok) {
+        let errMsg = "Failed to fetch Gmail threads.";
+        try {
+          const errData = await res.json();
+          errMsg = errData.message || errMsg;
+        } catch {}
+        const error = new Error(errMsg);
+        (error as any).status = res.status;
+        throw error;
+      }
       return res.json();
     },
   });
@@ -285,8 +296,52 @@ export default function GmailPage() {
             <div className="flex-1 overflow-y-auto divide-y divide-white/5">
               {isThreadsLoading ? (
                 <div className="p-8 text-center text-xs text-zinc-500 flex flex-col items-center justify-center gap-2">
-                  <Loader2 className="animate-spin text-zinc-400" size={18} />
-                  <span>Loading threads...</span>
+                  <LemniscateLoader size="md" label="Loading threads" className="text-zinc-400" />
+                </div>
+              ) : isThreadsError ? (
+                <div className="p-6 text-center flex flex-col items-center justify-center gap-3">
+                  {(() => {
+                    const isAuthError = threadsError?.status === 401 || 
+                                        threadsError?.status === 403 || 
+                                        threadsError?.message?.toLowerCase().includes("invalid_grant") || 
+                                        threadsError?.message?.toLowerCase().includes("auth") || 
+                                        threadsError?.message?.toLowerCase().includes("revoke") || 
+                                        threadsError?.message?.toLowerCase().includes("expired");
+                    return (
+                      <>
+                        <div className="text-red-400/80 text-xs font-mono font-bold uppercase tracking-wider">
+                          {isAuthError
+                            ? "Reconnect Gmail"
+                            : threadsError?.status === 500
+                            ? "Gmail temporarily unavailable"
+                            : "Check your connection"}
+                        </div>
+                        <p className="text-zinc-400 text-xs leading-relaxed max-w-[280px]">
+                          {isAuthError
+                            ? "Your Google OAuth session has expired or permissions were revoked. Please reconnect your account."
+                            : threadsError?.status === 500
+                            ? "The server encountered an error calling the Gmail API. Please try again later."
+                            : "We couldn't reach the server. Please verify your internet connection and try again."}
+                        </p>
+                        {isAuthError ? (
+                          <a
+                            href="/api/auth/gmail"
+                            className="mt-2 px-4 py-2 bg-white text-black hover:bg-zinc-200 text-xs font-bold rounded-lg transition shadow-md inline-block"
+                          >
+                            Reconnect Gmail
+                          </a>
+                        ) : (
+                          <button
+                            onClick={() => refetchThreads()}
+                            className="mt-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white border border-white/5 text-xs font-bold rounded-lg transition flex items-center gap-1.5 mx-auto cursor-pointer"
+                          >
+                            <RefreshCw size={12} className={isThreadsRefetching ? "animate-spin" : ""} />
+                            Retry Connection
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               ) : threadsData?.threads && threadsData.threads.length > 0 ? (
                 threadsData.threads.map((thread) => {
@@ -334,7 +389,7 @@ export default function GmailPage() {
                 })
               ) : (
                 <div className="p-8 text-center text-xs text-zinc-600">
-                  No email threads found.
+                  No emails found.
                 </div>
               )}
             </div>
@@ -368,8 +423,7 @@ export default function GmailPage() {
                 <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
                   {isThreadDetailLoading ? (
                     <div className="flex-1 flex flex-col items-center justify-center gap-2 text-zinc-500 text-xs">
-                      <Loader2 className="animate-spin text-zinc-400" size={20} />
-                      <span>Loading conversation history...</span>
+                      <LemniscateLoader size="md" label="Loading conversation" className="text-zinc-400" />
                     </div>
                   ) : threadDetail?.messages.map((msg) => {
                     const isUser = msg.from.toLowerCase().includes(session?.user?.email?.toLowerCase() || "");
@@ -421,7 +475,7 @@ export default function GmailPage() {
                       title="AI Draft response using Mercury-2"
                     >
                       {isGeneratingReply ? (
-                        <Loader2 className="animate-spin text-zinc-400" size={14} />
+                        <LemniscateLoader size="sm" className="text-zinc-400" />
                       ) : (
                         <Sparkles size={14} className="text-zinc-300" />
                       )}
@@ -449,7 +503,7 @@ export default function GmailPage() {
                         className="px-4 py-2 bg-white hover:bg-zinc-200 text-black text-xs font-bold rounded-lg transition duration-200 cursor-pointer disabled:opacity-40 shadow-md flex items-center gap-1.5"
                       >
                         {sendEmail.isPending ? (
-                          <Loader2 className="animate-spin" size={12} />
+                          <LemniscateLoader size="sm" className="text-current" />
                         ) : (
                           <Send size={12} />
                         )}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAuthenticatedUserOrThrow } from "@/lib/auth/session";
 import { sendGmailEmail, createGmailDraft } from "@/lib/gmail/client";
 import { handleApiError } from "@/lib/security/errors";
+import { publishRCPEvent } from "@/lib/rcp/processor";
 import { z } from "zod";
 
 const sendEmailSchema = z.object({
@@ -29,6 +30,19 @@ export async function POST(req: Request) {
         validated.body,
         validated.threadId
       );
+
+      try {
+        await publishRCPEvent(userId, "email_sent", {
+          recipient: validated.to,
+          subject: validated.subject,
+          threadId: validated.threadId || null,
+          sentAt: new Date().toISOString(),
+          status: "awaiting_reply",
+        });
+      } catch (e) {
+        console.warn("Failed to publish email_sent RCP event:", e);
+      }
+
       return NextResponse.json({
         success: true,
         message: "Email sent successfully.",

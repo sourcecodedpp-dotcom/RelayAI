@@ -3,6 +3,7 @@ import { getAuthenticatedUserOrThrow } from "@/lib/auth/session";
 import { db } from "@/lib/db/firestore";
 import { handleApiError } from "@/lib/security/errors";
 import { MissionBackgroundProcessor } from "@/lib/ai/orchestration/mission-background";
+import { publishRCPEvent } from "@/lib/rcp/processor";
 
 export const dynamic = "force-dynamic";
 import { RelationshipStatus } from "@/types";
@@ -97,6 +98,19 @@ export async function POST(req: Request) {
     };
 
     await contactRef.set(contactData);
+
+    try {
+      await publishRCPEvent(userId, "contact_created", {
+        contactId: contactRef.id,
+        name: validated.name,
+        email: validated.email,
+        company: validated.company,
+        status: validated.relationshipStatus,
+        missionId: validated.missionId || null,
+      });
+    } catch (e) {
+      console.warn("Failed to publish contact_created RCP event:", e);
+    }
 
     if (validated.missionId) {
       await MissionBackgroundProcessor.logEvent(

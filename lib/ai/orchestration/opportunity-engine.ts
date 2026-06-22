@@ -1,5 +1,6 @@
 import { db } from "@/lib/db/firestore";
 import { OpportunityType, OpportunityPriority, OpportunityStatus } from "@/types";
+import { publishRCPEvent } from "@/lib/rcp/processor";
 
 export class OpportunityEngine {
   /**
@@ -70,6 +71,15 @@ export class OpportunityEngine {
 
     await newOppRef.set(opportunityData);
 
+    try {
+      await publishRCPEvent(userId, "opportunity_created", {
+        opportunityId: newOppRef.id,
+        title: opportunityData.title,
+      });
+    } catch (e) {
+      console.warn("Failed to publish opportunity_created RCP event:", e);
+    }
+
     if (missionId) {
       const { MissionBackgroundProcessor } = await import("./mission-background");
       await MissionBackgroundProcessor.logEvent(
@@ -133,6 +143,15 @@ export class OpportunityEngine {
 
     await newOppRef.set(opportunityData);
 
+    try {
+      await publishRCPEvent(userId, "opportunity_created", {
+        opportunityId: newOppRef.id,
+        title: opportunityData.title,
+      });
+    } catch (e) {
+      console.warn("Failed to publish opportunity_created RCP event:", e);
+    }
+
     if (missionId) {
       const { MissionBackgroundProcessor } = await import("./mission-background");
       await MissionBackgroundProcessor.logEvent(
@@ -194,6 +213,15 @@ export class OpportunityEngine {
     };
 
     await newOppRef.set(opportunityData);
+
+    try {
+      await publishRCPEvent(userId, "opportunity_created", {
+        opportunityId: newOppRef.id,
+        title: opportunityData.title,
+      });
+    } catch (e) {
+      console.warn("Failed to publish opportunity_created RCP event:", e);
+    }
 
     if (missionId) {
       const { MissionBackgroundProcessor } = await import("./mission-background");

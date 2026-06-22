@@ -20,14 +20,16 @@ export class CommandRouter {
     conversationId: string | null = null,
     providerName: string = "system",
     modelName: string = "mercury-2",
-    apiKey: string = ""
+    apiKey: string = "",
+    rcpContext?: string,
+    baseURL?: string
   ): Promise<any> {
-    const provider = getProvider(providerName, apiKey, modelName);
+    const provider = getProvider(providerName, apiKey, modelName, baseURL);
     const modelConfig = getModelConfig(providerName, modelName);
 
     // ------ Conversation Context Pipeline ------
-    let contextBlock = "";
-    if (conversationId) {
+    let contextBlock = rcpContext || "";
+    if (!contextBlock && conversationId) {
       try {
         const { ContextBuilder } = await import("@/lib/ai/context-builder");
         const contextData = await ContextBuilder.buildContext(userId, conversationId, modelConfig.maxContextTokens);
@@ -38,9 +40,14 @@ export class CommandRouter {
     }
 
     const systemInstruction = `
-      You are the intelligent command router and conversational assistant for Relay AI (an AI-native chief of staff).
+      You are Relay AI.
 
-      ${contextBlock ? contextBlock : "No mission context available."}\n
+      Use the following Real-Time Context Protocol (RCP) block as the authoritative source of user context.
+
+      Do not invent information not present in the RCP.
+
+      ${contextBlock ? contextBlock : "No context block available."}
+
       Analyze the user command and categorize it into one of these intents:
       - 'draft_outreach': User wants to write an email, outreach draft, or reply. Extract 'contactName' if mentioned.
       - 'view_briefing': User wants to see daily briefings, dashboard, priorities, summaries of the week.
@@ -128,10 +135,10 @@ export class CommandRouter {
           targetUrl = contactId ? `/outreach?contactId=${contactId}` : `/outreach`;
           break;
         case "view_briefing":
-          targetUrl = "/briefing";
+          targetUrl = "/";
           break;
         case "view_relationships":
-          targetUrl = contactId ? `/relationships?contactId=${contactId}` : "/relationships";
+          targetUrl = contactId ? `/opportunities?contactId=${contactId}` : "/opportunities";
           break;
         case "schedule_followup":
           targetUrl = contactId ? `/follow-ups?contactId=${contactId}` : "/follow-ups";

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAuthenticatedUserOrThrow } from "@/lib/auth/session";
 import { db } from "@/lib/db/firestore";
 import { handleApiError } from "@/lib/security/errors";
+import { publishRCPEvent } from "@/lib/rcp/processor";
 
 export const dynamic = "force-dynamic";
 import { AuditAction } from "@/types";
@@ -30,6 +31,16 @@ export async function POST(req: Request) {
       onboardingCompleted: true,
       updatedAt: now,
     });
+
+    try {
+      await publishRCPEvent(userId, "profile_updated", {
+        startup: validated.primaryUseCase,
+        description: validated.outreachGoals,
+        targetAudience: [],
+      });
+    } catch (e) {
+      console.warn("Failed to publish profile_updated RCP event:", e);
+    }
 
     // 2. Write to audit trail
     const userAgent = req.headers.get("user-agent") || null;

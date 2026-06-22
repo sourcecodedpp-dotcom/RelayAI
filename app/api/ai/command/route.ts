@@ -213,33 +213,50 @@ export async function POST(req: Request) {
       }
     }
 
-    // 4. Call Agent Orchestrator to route command under this mission context
-    let routeResult;
+    // 4. Compile the RCP context block and invoke the Autonomous Swarm Executor in the background
     const startTime = Date.now();
+    let rcpContext = "";
     try {
-      routeResult = await CommandRouter.route(userId, command, targetMissionId, activeProvider, activeModel, apiKey);
-    } catch (routeErr: any) {
-      console.error(`CommandRouter execution failed for provider ${activeProvider}:`, routeErr);
-      return NextResponse.json({
-        success: false,
-        providerError: true,
-        fallbackAvailable: true,
-        message: `Your ${activeProvider} API key or connection is invalid. Switch to Relay Cloud?`
-      }, { status: 400 });
+      const { buildRCP } = await import("@/lib/rcp/compiler");
+      rcpContext = await buildRCP(userId, targetMissionId);
+    } catch (rcpErr) {
+      console.warn("Failed to compile RCP context: ", rcpErr);
     }
+
+    // Trigger SwarmExecutor asynchronously (non-blocking)
+    try {
+      const { SwarmExecutor } = await import("@/lib/ai/agents/swarm-executor");
+      SwarmExecutor.execute(
+        userId,
+        targetMissionId,
+        command,
+        rcpContext,
+        activeProvider,
+        activeModel,
+        apiKey
+      );
+    } catch (swarmErr) {
+      console.error("Failed to execute SwarmExecutor in background: ", swarmErr);
+    }
+
     const latencyMs = Date.now() - startTime;
+    const aiMessage = "Autonomous Swarm Activated: Starting background scanning and DB updates...";
 
     // 5. Save the AI output event to mission_events
-    const aiMessage = routeResult.summary || routeResult.message || routeResult.data?.message || "Command executed successfully.";
     await MissionBackgroundProcessor.logEvent(
       userId,
       targetMissionId,
       "ai_output",
       aiMessage,
       {
-        intent: routeResult.intent || routeResult.data?.intent || "unknown",
-        actions: routeResult.actions || [],
-        title: routeResult.title || "AI Response",
+        intent: "autonomous_agent",
+        actions: [
+          {
+            type: "redirect",
+            url: `/mission/${targetMissionId}`
+          }
+        ],
+        title: "Autonomous Swarm Initialized"
       }
     );
 
@@ -276,29 +293,25 @@ export async function POST(req: Request) {
       console.warn("Failed to write usage log:", logErr);
     }
 
-    // 8. If it's a new mission, redirect user to the new workspace page
-    let finalResult = routeResult;
-    if (isNewMission) {
-      finalResult = {
-        ...routeResult,
-        title: "Workspace Created",
-        summary: `Created new mission. Redirecting to workspace...`,
-        action: "redirect",
-        url: `/mission/${targetMissionId}`,
-        actions: [
-          {
-            type: "redirect",
-            url: `/mission/${targetMissionId}`,
-          }
-        ],
-        missionId: targetMissionId,
-        data: {
-          ...(routeResult.data || {}),
-          message: `Created new mission. Redirecting to workspace...`,
-          missionId: targetMissionId,
+    // 8. Redirect user to the new or active workspace page immediately
+    const finalResult = {
+      success: true,
+      type: "command_result",
+      title: "Autonomous Mission Initialized",
+      summary: "Starting background search and database pipeline...",
+      actions: [
+        {
+          type: "redirect",
+          url: `/mission/${targetMissionId}`,
         }
-      };
-    }
+      ],
+      missionId: targetMissionId,
+      data: {
+        intent: "autonomous_agent",
+        message: "Background agents processing your command...",
+        missionId: targetMissionId,
+      }
+    };
 
     // Validate response schema
     const responseValidation = CommandResponseSchema.safeParse(finalResult);

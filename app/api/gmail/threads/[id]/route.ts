@@ -94,7 +94,24 @@ export async function GET(
       threadId: id,
       messages,
     });
-  } catch (error) {
+  } catch (error: any) {
+    const errMsg = error.message || "";
+    if (
+      errMsg.includes("invalid_grant") ||
+      errMsg.includes("expired or revoked") ||
+      error.status === 400 ||
+      error.status === 401 ||
+      error.code === 401 ||
+      error.code === "invalid_grant"
+    ) {
+      return NextResponse.json(
+        {
+          error: "Gmail Authorization Failure",
+          message: "Gmail connection has been revoked or expired. Please reconnect.",
+        },
+        { status: 401 }
+      );
+    }
     return handleApiError(error);
   }
 }

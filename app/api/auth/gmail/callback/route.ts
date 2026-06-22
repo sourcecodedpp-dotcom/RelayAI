@@ -71,16 +71,17 @@ export async function GET(req: Request) {
 
     const now = new Date().toISOString();
 
-    // 6. Persist connection details in google_connections
+    // 6. Persist connection details in google_connections (overwrites old document to clear stale settings)
     await db.collection("google_connections").doc(userId).set({
       userId,
       email: emailAddress,
       encryptedRefreshToken: ciphertext,
       keyVersion: version, // Key version tracking
       gmailHistoryId: null,
+      scope: tokens.scope || null,
       createdAt: now,
       updatedAt: now,
-    }, { merge: true });
+    });
 
     // Write audit log entry
     const userAgent = req.headers.get("user-agent") || null;

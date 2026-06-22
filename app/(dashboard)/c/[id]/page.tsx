@@ -7,7 +7,6 @@ import {
     Paperclip,
     SendIcon,
     XIcon,
-    LoaderIcon,
     Sparkles,
     Command,
     Globe,
@@ -18,8 +17,13 @@ import {
     Terminal,
     User,
     ChevronLeft,
+    ChevronDown,
+    ChevronRight,
+    Brain,
+    FileUp,
     AlertTriangle,
 } from "lucide-react";
+import { LemniscateLoader } from "@/components/lemniscate-loader";
 import { motion, AnimatePresence } from "framer-motion";
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
@@ -222,6 +226,176 @@ function MarkdownRenderer({ text }: { text: string }) {
   return <div className="space-y-1 text-sm font-body text-zinc-100">{renderedElements}</div>;
 }
 
+function ThinkingTrace({ steps }: { steps: any[] }) {
+    const [isOpen, setIsOpen] = useState(false);
+
+    if (!steps || steps.length === 0) return null;
+
+    const lastStep = steps[steps.length - 1];
+    const isError = steps.some(s => s.isError || s.type === "error");
+    const activeStep = lastStep?.text;
+    const stepCount = steps.length;
+
+    const getElapsed = (step: any, idx: number) => {
+        if (step.createdAt && steps[0].createdAt) {
+            try {
+                const diff = new Date(step.createdAt).getTime() - new Date(steps[0].createdAt).getTime();
+                if (!isNaN(diff)) {
+                    return `+${(diff / 1000).toFixed(1)}s`;
+                }
+            } catch (e) {}
+        }
+        return `+${(idx * 0.4).toFixed(1)}s`;
+    };
+
+    return (
+        <div className="w-full my-2 flex justify-start select-none">
+            <div className="w-full max-w-[90%] md:max-w-[85%] rounded-lg border border-zinc-800/80 bg-zinc-950/25 hover:bg-zinc-950/35 transition-all duration-200 overflow-hidden backdrop-blur-sm">
+                <button
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="w-full flex items-center justify-between px-3 py-2 text-xs text-zinc-400 font-mono transition-colors duration-150"
+                >
+                    <div className="flex items-center gap-2">
+                        {isOpen ? (
+                            <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
+                        ) : (
+                            <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
+                        )}
+                        <span className="font-semibold text-zinc-300 font-mono tracking-tight text-[11px]">Swarm Trace</span>
+                        <span className="text-[9px] px-1 rounded bg-zinc-800/60 text-zinc-500 font-medium">
+                            {stepCount} {stepCount === 1 ? "step" : "steps"}
+                        </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                        {isError ? (
+                            <span className="text-[10px] text-red-400 font-bold flex items-center gap-1 font-mono">
+                                <AlertTriangle className="w-3 h-3 animate-pulse" /> FAILED
+                            </span>
+                        ) : (
+                            <span className="text-[10px] text-zinc-500 truncate max-w-[200px] md:max-w-xs italic font-mono">
+                                {isOpen ? "Details expanded" : activeStep}
+                            </span>
+                        )}
+                    </div>
+                </button>
+
+                <AnimatePresence initial={false}>
+                    {isOpen && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.15, ease: "easeInOut" }}
+                            className="border-t border-zinc-900/60 bg-zinc-950/45"
+                        >
+                            <div className="py-1">
+                                {steps.map((step, idx) => {
+                                    let tag = "info";
+                                    let content = step.text;
+                                    let dotType = step.type || "info";
+
+                                    if (content.startsWith("Autonomous Swarm Initialized:")) {
+                                        tag = "swarm";
+                                        dotType = "swarm";
+                                        content = content.replace("Autonomous Swarm Initialized:", "").trim();
+                                    } else if (content.startsWith("Search Scout:")) {
+                                        tag = "search";
+                                        dotType = "search";
+                                        content = content.replace("Search Scout:", "").trim();
+                                    } else if (content.startsWith("Integrator: Contact record")) {
+                                        tag = "db";
+                                        dotType = "integrator";
+                                        content = content.replace("Integrator:", "").trim();
+                                    } else if (content.startsWith("Integrator: Outreach email")) {
+                                        tag = "email";
+                                        dotType = "gmail";
+                                        content = content.replace("Integrator:", "").trim();
+                                    } else if (content.startsWith("Integrator: Scheduled follow-up")) {
+                                        tag = "task";
+                                        dotType = "follow_up";
+                                        content = content.replace("Integrator:", "").trim();
+                                    } else if (content.startsWith("Integrator:")) {
+                                        tag = "integrator";
+                                        dotType = "integrator";
+                                        content = content.replace("Integrator:", "").trim();
+                                    } else if (step.type === "thought" || content.startsWith("Thought:")) {
+                                        tag = "thought";
+                                        dotType = "thought";
+                                        content = content.replace(/^Thought:\s*/, "").trim();
+                                    } else if (step.type === "error" || step.isError) {
+                                        tag = "error";
+                                        dotType = "error";
+                                    }
+
+                                    let tagColorClass = "text-zinc-500";
+                                    let dotColorClass = "bg-zinc-600";
+                                    let textColorClass = "text-zinc-300";
+
+                                    if (dotType === "swarm") {
+                                        tagColorClass = "text-purple-400/90";
+                                        dotColorClass = "bg-purple-500/80";
+                                    } else if (dotType === "search") {
+                                        tagColorClass = "text-emerald-400/90";
+                                        dotColorClass = "bg-emerald-500/80";
+                                    } else if (dotType === "integrator") {
+                                        tagColorClass = "text-blue-400/90";
+                                        dotColorClass = "bg-blue-500/80";
+                                    } else if (dotType === "gmail") {
+                                        tagColorClass = "text-cyan-400/90";
+                                        dotColorClass = "bg-cyan-500/80";
+                                    } else if (dotType === "follow_up") {
+                                        tagColorClass = "text-violet-400/90";
+                                        dotColorClass = "bg-violet-500/80";
+                                    } else if (dotType === "thought") {
+                                        tagColorClass = "text-zinc-650";
+                                        dotColorClass = "bg-zinc-700";
+                                        textColorClass = "text-zinc-500 italic";
+                                    } else if (dotType === "error") {
+                                        tagColorClass = "text-red-400/90";
+                                        dotColorClass = "bg-red-500/80 animate-pulse";
+                                        textColorClass = "text-red-300/80";
+                                    }
+
+                                    const elapsed = getElapsed(step, idx);
+                                    const isFirst = idx === 0;
+                                    const isLast = idx === steps.length - 1;
+
+                                    return (
+                                        <div key={idx} className="flex items-center py-1.5 hover:bg-white/[0.01] transition-colors font-mono">
+                                            {/* Timestamp & Tag */}
+                                            <div className="w-[105px] shrink-0 flex items-center justify-between pr-3 select-none text-[9px]">
+                                                <span className="text-zinc-650 pl-2.5 font-medium">{elapsed}</span>
+                                                <span className={cn("font-bold tracking-widest text-[9px] uppercase", tagColorClass)}>{tag}</span>
+                                            </div>
+                                            
+                                            {/* Timeline Dot & Line */}
+                                            <div className="relative w-3 self-stretch flex items-center justify-center shrink-0">
+                                                <div className={cn(
+                                                    "absolute left-1/2 w-[1px] bg-zinc-800/85",
+                                                    isFirst && isLast ? "hidden" : isFirst ? "top-1/2 bottom-0" : isLast ? "top-0 bottom-1/2" : "top-0 bottom-0"
+                                                )} style={{ transform: 'translateX(-50%)' }} />
+                                                <div className={cn("absolute w-1.5 h-1.5 rounded-full z-10 border border-zinc-950", dotColorClass)} />
+                                            </div>
+                                            
+                                            {/* Content */}
+                                            <div className="flex-1 pl-3.5 min-w-0 pr-3">
+                                                <span className={cn("text-[10.5px] leading-relaxed break-words font-mono block", textColorClass)}>
+                                                    {content}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+        </div>
+    );
+}
+
 export default function ConversationPage() {
     const router = useRouter();
     const params = useParams();
@@ -231,7 +405,7 @@ export default function ConversationPage() {
     const [loading, setLoading] = useState(true);
 
     const [value, setValue] = useState("");
-    const [attachments, setAttachments] = useState<string[]>([]);
+    const [attachments, setAttachments] = useState<Array<{ name: string; size: number; type: string; content: string }>>([]);
     const [isTyping, setIsTyping] = useState(false);
     const [isPending, startTransition] = useTransition();
     const [activeSuggestion, setActiveSuggestion] = useState<number>(-1);
@@ -239,9 +413,11 @@ export default function ConversationPage() {
     const [recentCommand, setRecentCommand] = useState<string | null>(null);
     const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
     const { textareaRef, adjustHeight } = useAutoResizeTextarea({
-        minHeight: 60,
-        maxHeight: 200,
+        minHeight: 40,
+        maxHeight: 120,
     });
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [inputFocused, setInputFocused] = useState(false);
     const commandPaletteRef = useRef<HTMLDivElement>(null);
     
@@ -269,21 +445,59 @@ export default function ConversationPage() {
         fetchProviders();
     }, []);
 
+    // Global Cmd+K / Ctrl+K keyboard shortcut
+    useEffect(() => {
+        const handleGlobalKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                setShowCommandPalette(prev => !prev);
+            }
+        };
+        window.addEventListener("keydown", handleGlobalKeyDown);
+        return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+    }, []);
+
+    // File input handler
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (files) {
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const content = event.target?.result as string || "";
+                    setAttachments(prev => [...prev, {
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        content: content
+                    }]);
+                };
+                if (file.type.startsWith("text/") || file.name.endsWith(".txt") || file.name.endsWith(".json") || file.name.endsWith(".csv") || file.name.endsWith(".md") || file.name.endsWith(".ts") || file.name.endsWith(".js")) {
+                    reader.readAsText(file);
+                } else {
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+        e.target.value = '';
+    };
+
     // Messages state mapped directly from messages subcollection
     const [messages, setMessages] = useState<Array<{ 
         sender: "user" | "ai" | "system"; 
         text: string; 
         type?: string;
         actionUrl?: string; 
-        isError?: boolean 
+        isError?: boolean;
+        attachments?: Array<{ name: string; size: number; type: string }>;
     }>>([]);
 
     const commandSuggestions: CommandSuggestion[] = [
         { 
             icon: <Sparkles className="w-4 h-4" />, 
-            label: "Briefing", 
-            description: "Show strategic dashboard & briefing", 
-            prefix: "/briefing" 
+            label: "Home", 
+            description: "Go to home chat screen", 
+            prefix: "/" 
         },
         { 
             icon: <Mail className="w-4 h-4" />, 
@@ -342,7 +556,11 @@ export default function ConversationPage() {
                 // Hydrate messages from subcollection event log
                 const hydratedMessages = (data.messages || []).map((msg: any) => {
                     if (msg.role === "user") {
-                        return { sender: "user" as const, text: msg.content };
+                        return { 
+                            sender: "user" as const, 
+                            text: msg.content,
+                            attachments: msg.metadata?.attachments || []
+                        };
                     } else if (msg.role === "assistant") {
                         return {
                             sender: "ai" as const,
@@ -372,6 +590,13 @@ export default function ConversationPage() {
 
     useEffect(() => {
         loadConversationData(true);
+        
+        // Setup polling every 3 seconds to get live background agent chat updates
+        const pollInterval = setInterval(() => {
+            loadConversationData(false);
+        }, 3000);
+        
+        return () => clearInterval(pollInterval);
     }, [loadConversationData]);
 
     useEffect(() => {
@@ -413,6 +638,8 @@ export default function ConversationPage() {
                 !commandButton?.contains(target)) {
                 setShowCommandPalette(false);
             }
+            // Close model dropdown on outside click
+            setShowModelDropdown(false);
         };
 
         document.addEventListener('mousedown', handleClickOutside);
@@ -459,13 +686,21 @@ export default function ConversationPage() {
         const queryText = value.trim();
         if (!queryText) return;
 
+        // Capture attachments locally to store in message and send
+        const currentAttachments = [...attachments];
+
         // Reset input area immediately like standard chat interfaces
         setValue("");
+        setAttachments([]);
         adjustHeight(true);
         setIsTyping(true);
 
         // Append user query to conversation history locally for responsiveness
-        setMessages(prev => [...prev, { sender: "user", text: queryText }]);
+        setMessages(prev => [...prev, { 
+            sender: "user", 
+            text: queryText,
+            attachments: currentAttachments.map(att => ({ name: att.name, size: att.size, type: att.type }))
+        }]);
 
         try {
             const res = await fetch("/api/chat", {
@@ -475,7 +710,8 @@ export default function ConversationPage() {
                     message: queryText, 
                     conversationId,
                     provider: selectedProvider,
-                    model: selectedModel
+                    model: selectedModel,
+                    attachments: currentAttachments
                 }),
             });
 
@@ -593,8 +829,7 @@ export default function ConversationPage() {
     };
 
     const handleAttachFile = () => {
-        const mockFileName = `file-${Math.floor(Math.random() * 1000)}.pdf`;
-        setAttachments(prev => [...prev, mockFileName]);
+        fileInputRef.current?.click();
     };
 
     const removeAttachment = (index: number) => {
@@ -608,6 +843,23 @@ export default function ConversationPage() {
         
         setRecentCommand(selectedCommand.label);
         setTimeout(() => setRecentCommand(null), 2000);
+    };
+
+    // Auto-scroll to bottom when new messages arrive
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages, isTyping]);
+
+    // Get available models for the dropdown
+    const getAvailableModels = () => {
+        const models = [
+            { id: "mercury-2", name: "Mercury 2", provider: "system" },
+            { id: "gpt-4o", name: "GPT-4o", provider: "openai" },
+            { id: "gpt-4o-mini", name: "GPT-4o Mini", provider: "openai" },
+            { id: "claude-3-5-sonnet", name: "Claude 3.5", provider: "anthropic" },
+            { id: "gemini-pro", name: "Gemini Pro", provider: "google" },
+        ];
+        return models;
     };
 
     useEffect(() => {
@@ -630,10 +882,7 @@ export default function ConversationPage() {
     if (loading) {
         return (
             <div className="min-h-[calc(100vh-140px)] flex flex-col w-full items-center justify-center bg-transparent text-white p-6 relative">
-                <LoaderIcon className="w-8 h-8 animate-spin text-white/40" />
-                <span className="text-xs tracking-widest font-mono text-white/30 mt-3 uppercase animate-pulse">
-                    Loading Workspace...
-                </span>
+                <LemniscateLoader size="lg" label="Loading Workspace" className="text-white/60" />
             </div>
         );
     }
@@ -644,210 +893,194 @@ export default function ConversationPage() {
                 <div className="text-center space-y-4 max-w-md mx-auto">
                     <h1 className="text-2xl font-medium tracking-tight text-white/90">Workspace not found</h1>
                     <p className="text-sm text-white/40">This workspace does not exist or you don't have access to it.</p>
-                    <Link href="/briefing" className="inline-flex items-center gap-2 mt-4 px-4 py-2 border border-white/10 rounded-lg text-xs font-mono font-bold tracking-wider hover:bg-white/5 transition">
-                        <ChevronLeft className="w-4 h-4" /> RETURN TO BRIEFING
+                    <Link href="/" className="inline-flex items-center gap-2 mt-4 px-4 py-2 border border-white/10 rounded-lg text-xs font-mono font-bold tracking-wider hover:bg-white/5 transition">
+                        <ChevronLeft className="w-4 h-4" /> RETURN TO HOME
                     </Link>
                 </div>
             </div>
         );
     }
 
+    // Group consecutive system messages
+    const groupedMessages: Array<{
+        type: "user" | "ai" | "system-group";
+        message?: any;
+        steps?: any[];
+        key: string;
+    }> = [];
+
+    messages.forEach((msg, idx) => {
+        if (msg.sender === "system") {
+            const lastGroup = groupedMessages[groupedMessages.length - 1];
+            if (lastGroup && lastGroup.type === "system-group") {
+                lastGroup.steps?.push(msg);
+            } else {
+                groupedMessages.push({
+                    type: "system-group",
+                    steps: [msg],
+                    key: `sys-group-${idx}`
+                });
+            }
+        } else {
+            groupedMessages.push({
+                type: msg.sender,
+                message: msg,
+                key: `msg-${idx}`
+            });
+        }
+    });
+
     return (
-        <div className="min-h-[calc(100vh-140px)] flex flex-col w-full items-center justify-center bg-transparent text-white p-6 relative overflow-hidden">
-            <div className="absolute inset-0 w-full h-full overflow-hidden">
-                <div className="absolute top-0 left-1/4 w-96 h-96 bg-white/[0.03] rounded-full mix-blend-normal filter blur-[128px] animate-pulse" />
-                <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-zinc-300/[0.02] rounded-full mix-blend-normal filter blur-[128px] animate-pulse delay-700" />
-                <div className="absolute top-1/4 right-1/3 w-64 h-64 bg-zinc-100/[0.015] rounded-full mix-blend-normal filter blur-[96px] animate-pulse delay-1000" />
-            </div>
+        <div className="h-[calc(100vh-64px)] flex flex-col w-full bg-transparent text-white relative overflow-hidden">
 
-            <div className="w-full max-w-2xl mx-auto relative">
-                <motion.div 
-                    className="relative z-10 space-y-12"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
-                >
-                    <div className="text-center space-y-3">
-                        {/* Title (Only render if not generic) */}
-                        {!(() => {
-                            const titleLower = (conversation.title || "").trim().toLowerCase();
-                            return titleLower === "untitled conversation" || titleLower === "general assistance request" || titleLower === "workspace active" || titleLower === "user greeted the assistant";
-                        })() && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.2, duration: 0.5 }}
-                                className="inline-block w-full"
-                            >
-                                <h1 className="text-3xl font-medium tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white/90 to-white/40 pb-1">
-                                    {conversation.title}
-                                </h1>
-                            </motion.div>
-                        )}
-
-                        {/* Last updated timestamp */}
-                        <motion.p
-                            className="text-xs text-white/40 font-mono tracking-wider animate-pulse"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.25 }}
-                        >
-                            Last updated: {new Date(conversation.lastMessageAt || conversation.updatedAt || conversation.createdAt).toLocaleString()}
-                        </motion.p>
-
-                        {/* Summary (Only render if not generic) */}
-                        {conversation.summary && !(() => {
-                            const summaryLower = conversation.summary.trim().toLowerCase();
-                            return summaryLower === "untitled conversation" || summaryLower === "general assistance request" || summaryLower === "workspace active" || summaryLower === "user greeted the assistant";
-                        })() && (
-                            <>
-                                <motion.div 
-                                    className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent my-2"
-                                    initial={{ width: 0, opacity: 0 }}
-                                    animate={{ width: "100%", opacity: 1 }}
-                                    transition={{ delay: 0.5, duration: 0.8 }}
-                                />
-                                <motion.p 
-                                    className="text-xs text-white/50 max-w-md mx-auto leading-relaxed"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ delay: 0.3 }}
-                                >
-                                    {conversation.summary}
-                                </motion.p>
-                            </>
-                        )}
-                    </div>
-
-                    {/* Chat Messages Thread & Events */}
-                    {messages.length > 0 && (
-                        <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2 flex flex-col gap-3 scroll-smooth select-text w-full z-10">
+            {/* Scrollable chat area */}
+            <div className="flex-1 overflow-y-auto pb-36 pt-4 px-4">
+                <div className="w-full max-w-2xl mx-auto relative">
+                    {/* Chat Messages */}
+                    {messages.length > 0 ? (
+                        <div className="space-y-3 flex flex-col select-text w-full">
                             <AnimatePresence initial={false}>
-                                {messages.map((msg, index) => {
-                                    if (msg.sender === "system") {
+                                {groupedMessages.map((group) => {
+                                    if (group.type === "system-group") {
                                         return (
-                                            <motion.div
-                                                key={index}
-                                                initial={{ opacity: 0, scale: 0.95 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                transition={{ duration: 0.2 }}
-                                                className="flex w-full justify-center my-1 select-none"
-                                            >
-                                                <div className="bg-white/[0.03] border border-white/5 rounded-full px-3 py-1.5 text-xs text-white/50 font-mono flex items-center gap-1.5 shadow-sm">
-                                                    {msg.type === "opportunity" && <Sparkles className="w-3.5 h-3.5 text-yellow-500/80" />}
-                                                    {msg.type === "contact" && <User className="w-3.5 h-3.5 text-blue-400/80" />}
-                                                    {msg.type === "follow_up" && <Clock className="w-3.5 h-3.5 text-purple-400/80" />}
-                                                    {msg.type === "gmail_thread" && <Mail className="w-3.5 h-3.5 text-green-400/80" />}
-                                                    <span>{msg.text}</span>
-                                                </div>
-                                            </motion.div>
+                                            <ThinkingTrace 
+                                                key={group.key} 
+                                                steps={group.steps || []} 
+                                            />
                                         );
                                     }
 
+                                    const msg = group.message;
                                     return (
                                         <motion.div
-                                            key={index}
-                                            initial={{ opacity: 0, y: 12, scale: 0.98 }}
-                                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                                            transition={{ duration: 0.25, ease: "easeOut" }}
+                                            key={group.key}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ duration: 0.2, ease: "easeOut" }}
                                             className={cn(
-                                                "flex w-full gap-3 items-start",
+                                                "flex w-full gap-2.5 items-start",
                                                 msg.sender === "user" ? "justify-end" : "justify-start"
                                             )}
                                         >
-                                            {msg.sender === "ai" && (
-                                                <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-mono font-bold text-white shrink-0 mt-0.5 shadow-md">
-                                                    zap
-                                                </div>
-                                            )}
+
 
                                             <div
                                                 className={cn(
-                                                    "max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed border shadow-lg relative overflow-hidden",
+                                                    "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed border relative",
                                                     msg.sender === "user"
-                                                        ? "bg-white/[0.08] border-white/10 text-white rounded-tr-none font-body"
+                                                        ? "bg-white/[0.06] border-white/[0.08] text-white rounded-tr-sm"
                                                         : msg.isError
-                                                            ? "bg-red-950/20 border-red-500/20 text-red-200 rounded-tl-none font-body"
-                                                            : "bg-zinc-900/60 border-white/5 text-zinc-100 rounded-tl-none font-body"
+                                                            ? "bg-red-950/20 border-red-500/15 text-red-200 rounded-tl-sm"
+                                                            : "bg-white/[0.02] border-white/[0.05] text-zinc-200 rounded-tl-sm"
                                                 )}
                                             >
-                                                {msg.sender === "ai" && !msg.isError && (
-                                                    <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest font-bold mb-1 select-none">
-                                                        AI Response
-                                                    </div>
-                                                )}
                                                 {msg.sender === "ai" && msg.isError && (
-                                                    <div className="text-[10px] font-mono text-red-400 uppercase tracking-widest font-bold mb-1 select-none">
-                                                        Execution Error
+                                                    <div className="text-[9px] font-mono text-red-400/70 uppercase tracking-widest font-bold mb-1 select-none">
+                                                        Error
                                                     </div>
                                                 )}
 
                                                 {msg.sender === "ai" ? (
                                                     <MarkdownRenderer text={msg.text} />
                                                 ) : (
-                                                    <div className="whitespace-pre-wrap">{msg.text}</div>
+                                                    <>
+                                                        <div className="whitespace-pre-wrap">{msg.text}</div>
+                                                        {msg.attachments && msg.attachments.length > 0 && (
+                                                            <div className="mt-2.5 flex flex-col gap-1.5 border-t border-white/5 pt-2 select-none">
+                                                                {msg.attachments.map((att: any, attIdx: number) => (
+                                                                    <div key={attIdx} className="flex items-center gap-1.5 text-xs text-white/50">
+                                                                        <Paperclip className="w-3.5 h-3.5 text-white/30" />
+                                                                        <span>{att.name}</span>
+                                                                        <span className="text-[10px] text-white/25">({Math.round(att.size / 1024)} KB)</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </>
                                                 )}
 
                                                 {msg.actionUrl && (
-                                                    <div className="mt-3 pt-2.5 border-t border-white/5 flex justify-end select-none">
+                                                    <div className="mt-2 pt-2 border-t border-white/5 flex justify-end select-none">
                                                         <Link
                                                             href={msg.actionUrl}
-                                                            className="text-xs font-bold text-white hover:text-zinc-300 hover:underline flex items-center gap-1 transition"
+                                                            className="text-[11px] font-semibold text-white/70 hover:text-white flex items-center gap-1 transition"
                                                         >
-                                                            Navigate to Page &rarr;
+                                                            Open &rarr;
                                                         </Link>
                                                     </div>
                                                 )}
                                             </div>
 
-                                            {msg.sender === "user" && (
-                                                <div className="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-[10px] font-mono font-bold text-white shrink-0 mt-0.5 shadow-md">
-                                                    US
-                                                </div>
-                                            )}
+
                                         </motion.div>
                                     );
                                 })}
                             </AnimatePresence>
+                            <div ref={messagesEndRef} />
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-[50vh] text-center">
+                            <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mb-4">
+                                <Sparkles className="w-5 h-5 text-white/20" />
+                            </div>
+                            <p className="text-sm text-white/30 font-medium">Start a conversation</p>
+                            <p className="text-xs text-white/15 mt-1">Type below to begin</p>
                         </div>
                     )}
+                </div>
+            </div>
+
+            {/* Fixed bottom-center input bar — offset by sidebar width dynamically */}
+            <div className="fixed bottom-0 left-[var(--sidebar-width)] right-0 z-50 flex justify-center pointer-events-none">
+                <div className="w-full max-w-xl pointer-events-auto px-4 pb-5 pt-2">
+                    {/* Hidden file input */}
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={handleFileSelect}
+                    />
 
                     <motion.div 
-                        className="relative backdrop-blur-2xl bg-white/[0.02] rounded-2xl border border-white/[0.05] shadow-2xl"
-                        initial={{ scale: 0.98 }}
-                        animate={{ scale: 1 }}
-                        transition={{ delay: 0.1 }}
+                        className="relative backdrop-blur-2xl bg-zinc-950/90 rounded-2xl border border-white/[0.08] shadow-2xl shadow-black/50 transition-colors duration-200"
+                        initial={{ scale: 0.98, y: 10 }}
+                        animate={{ scale: 1, y: 0 }}
+                        transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 30 }}
+                        style={{
+                            boxShadow: inputFocused 
+                                ? "0 0 0 1px rgba(255,255,255,0.12), 0 25px 50px -12px rgba(0,0,0,0.5)" 
+                                : "0 25px 50px -12px rgba(0,0,0,0.5)"
+                        }}
                     >
+                        {/* Command palette */}
                         <AnimatePresence>
                             {showCommandPalette && (
                                 <motion.div 
                                     ref={commandPaletteRef}
-                                    className="absolute left-4 right-4 bottom-full mb-2 backdrop-blur-xl bg-black/90 rounded-lg z-50 shadow-lg border border-white/10 overflow-hidden"
+                                    className="absolute left-0 right-0 bottom-full mb-2 backdrop-blur-xl bg-black/95 rounded-xl z-50 shadow-lg border border-white/10 overflow-hidden"
                                     initial={{ opacity: 0, y: 5 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: 5 }}
                                     transition={{ duration: 0.15 }}
                                 >
-                                    <div className="py-1 bg-black/95">
+                                    <div className="py-1">
                                         {commandSuggestions.map((suggestion, index) => (
                                             <motion.div
                                                 key={suggestion.prefix}
                                                 className={cn(
-                                                    "flex items-center gap-2 px-3 py-2 text-xs transition-colors cursor-pointer",
+                                                    "flex items-center gap-2.5 px-3.5 py-2.5 text-xs transition-colors duration-150 cursor-pointer",
                                                     activeSuggestion === index 
                                                         ? "bg-white/10 text-white" 
                                                         : "text-white/70 hover:bg-white/5"
                                                 )}
                                                 onClick={() => selectCommandSuggestion(index)}
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                transition={{ delay: index * 0.03 }}
                                             >
-                                                <div className="w-5 h-5 flex items-center justify-center text-white/60">
+                                                <div className="w-4 h-4 flex items-center justify-center text-white/50">
                                                     {suggestion.icon}
                                                 </div>
-                                                <div className="font-medium">{suggestion.label}</div>
-                                                <div className="text-white/40 text-xs ml-1">
+                                                <div className="font-medium text-[11px]">{suggestion.label}</div>
+                                                <div className="text-white/30 text-[10px] ml-auto font-mono">
                                                     {suggestion.prefix}
                                                 </div>
                                             </motion.div>
@@ -857,7 +1090,41 @@ export default function ConversationPage() {
                             )}
                         </AnimatePresence>
 
-                        <div className="p-4">
+                        {/* Attachments bar */}
+                        <AnimatePresence>
+                            {attachments.length > 0 && (
+                                <motion.div 
+                                    className="px-4 pt-3 pb-0 flex gap-2 flex-wrap"
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                >
+                                    {attachments.map((file, index) => (
+                                        <motion.div
+                                            key={index}
+                                            className="flex items-center gap-1.5 text-[10px] bg-white/[0.04] py-1.5 px-2.5 rounded-lg text-white/50 border border-white/[0.06] cursor-default"
+                                            initial={{ opacity: 0, scale: 0.9 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.9 }}
+                                        >
+                                            <Paperclip className="w-3 h-3 text-white/30" />
+                                            <span className="max-w-[120px] truncate">{file.name}</span>
+                                            <span className="text-[8px] text-white/20">({Math.round(file.size / 1024)} KB)</span>
+                                            <button 
+                                                onClick={() => removeAttachment(index)}
+                                                className="text-white/25 hover:text-white/60 transition-colors duration-150 cursor-pointer ml-0.5"
+                                                aria-label={`Remove ${file.name}`}
+                                            >
+                                                <XIcon className="w-3 h-3" />
+                                            </button>
+                                        </motion.div>
+                                    ))}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* Textarea — full width */}
+                        <div className="px-4 pt-3 pb-1">
                             <Textarea
                                 ref={textareaRef}
                                 value={value}
@@ -868,104 +1135,60 @@ export default function ConversationPage() {
                                 onKeyDown={handleKeyDown}
                                 onFocus={() => setInputFocused(true)}
                                 onBlur={() => setInputFocused(false)}
-                                placeholder="Ask zap a question in this workspace..."
+                                placeholder="Ask Relay AI anything..."
                                 containerClassName="w-full"
                                 className={cn(
-                                    "w-full px-4 py-3",
+                                    "w-full py-1 px-0",
                                     "resize-none",
                                     "bg-transparent",
                                     "border-none",
-                                    "text-white/90 text-sm",
-                                    "focus:outline-none",
-                                    "placeholder:text-white/20",
-                                    "min-h-[60px]"
+                                    "text-white/90 text-[14px] leading-relaxed",
+                                    "focus:outline-none focus:ring-0 focus-visible:ring-0",
+                                    "placeholder:text-white/25",
+                                    "min-h-[24px] max-h-[120px]"
                                 )}
                                 style={{
                                     overflow: "hidden",
+                                    boxShadow: "none"
                                 }}
                                 showRing={false}
                             />
                         </div>
 
-                        <AnimatePresence>
-                            {attachments.length > 0 && (
-                                <motion.div 
-                                    className="px-4 pb-3 flex gap-2 flex-wrap"
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: "auto" }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                >
-                                    {attachments.map((file, index) => (
-                                        <motion.div
-                                            key={index}
-                                            className="flex items-center gap-2 text-xs bg-white/[0.03] py-1.5 px-3 rounded-lg text-white/70"
-                                            initial={{ opacity: 0, scale: 0.9 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            exit={{ opacity: 0, scale: 0.9 }}
-                                        >
-                                            <span>{file}</span>
-                                            <button 
-                                                onClick={() => removeAttachment(index)}
-                                                className="text-white/40 hover:text-white transition-colors"
-                                            >
-                                                <XIcon className="w-3 h-3" />
-                                            </button>
-                                        </motion.div>
-                                    ))}
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-
-                        <div className="p-4 border-t border-white/[0.05] flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-3">
+                        {/* Bottom toolbar — single row */}
+                        <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
+                            {/* Left: actions */}
+                            <div className="flex items-center gap-0.5">
+                                {/* File attach */}
                                 <motion.button
                                     type="button"
-                                    onClick={handleAttachFile}
-                                    whileTap={{ scale: 0.94 }}
-                                    className="p-2 text-white/40 hover:text-white/90 rounded-lg transition-colors relative group"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    className="p-2 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/[0.05] transition-colors duration-200 cursor-pointer"
+                                    title="Attach files"
+                                    aria-label="Attach files"
                                 >
-                                    <Paperclip className="w-4 h-4" />
-                                    <motion.span
-                                        className="absolute inset-0 bg-white/[0.05] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                                        layoutId="button-highlight"
-                                    />
-                                </motion.button>
-                                <motion.button
-                                    type="button"
-                                    data-command-button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowCommandPalette(prev => !prev);
-                                    }}
-                                    whileTap={{ scale: 0.94 }}
-                                    className={cn(
-                                        "p-2 text-white/40 hover:text-white/90 rounded-lg transition-colors relative group",
-                                        showCommandPalette && "bg-white/10 text-white/90"
-                                    )}
-                                >
-                                    <Command className="w-4 h-4" />
-                                    <motion.span
-                                        className="absolute inset-0 bg-white/[0.05] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                                        layoutId="button-highlight"
-                                    />
+                                    <FileUp className="w-[18px] h-[18px]" />
                                 </motion.button>
 
-                                {/* Model Selector Dropdown */}
+                                {/* Divider */}
+                                <div className="w-px h-4 bg-white/[0.06] mx-1" />
+
+                                {/* Model selector */}
                                 <div className="relative">
-                                    <motion.button
-                                        type="button"
-                                        onClick={() => setShowModelDropdown(prev => !prev)}
-                                        whileTap={{ scale: 0.94 }}
-                                        className={cn(
-                                            "px-2.5 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 rounded-lg text-[11px] text-white/70 font-mono transition-colors flex items-center gap-1.5",
-                                            showModelDropdown && "bg-white/10 text-white"
-                                        )}
+                                    <button
+                                        onClick={() => setShowModelDropdown(!showModelDropdown)}
+                                        className="flex items-center gap-1.5 text-[11px] font-mono text-white/35 hover:text-white/60 transition-colors duration-200 py-1.5 px-2 rounded-lg hover:bg-white/[0.04] cursor-pointer"
                                     >
-                                        <Sparkles className="w-3.5 h-3.5 text-violet-400" />
-                                        <span className="max-w-[100px] truncate">{selectedModel === "mercury-2" ? "Relay Cloud" : selectedModel}</span>
-                                        <span className="text-[8px] text-white/30">▼</span>
-                                    </motion.button>
-                                    
+                                        <Sparkles className="w-3.5 h-3.5" />
+                                        <span className="tracking-wide">{selectedModel}</span>
+                                        <ChevronDown className={cn(
+                                            "w-3 h-3 transition-transform duration-200",
+                                            showModelDropdown && "rotate-180"
+                                        )} />
+                                    </button>
+
                                     <AnimatePresence>
                                         {showModelDropdown && (
                                             <motion.div
@@ -1012,7 +1235,7 @@ export default function ConversationPage() {
                                                     <span>Gemini 2.5 Pro</span>
                                                     {selectedModel === "gemini-2.5-pro" && <span className="text-[10px] text-emerald-400">✓</span>}
                                                 </button>
-
+                                                
                                                 <button
                                                     type="button"
                                                     onClick={() => {
@@ -1028,7 +1251,7 @@ export default function ConversationPage() {
                                                     <span>GPT-4o</span>
                                                     {selectedModel === "gpt-4o" && <span className="text-[10px] text-emerald-400">✓</span>}
                                                 </button>
-
+                                                
                                                 <button
                                                     type="button"
                                                     onClick={() => {
@@ -1080,69 +1303,49 @@ export default function ConversationPage() {
                                     </AnimatePresence>
                                 </div>
                             </div>
-                            
+
+                            {/* Right: send */}
                             <motion.button
                                 type="button"
                                 onClick={handleSendMessage}
-                                whileHover={{ scale: 1.01 }}
-                                whileTap={{ scale: 0.98 }}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                                 disabled={isTyping || !value.trim()}
                                 className={cn(
-                                    "px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                                    "flex items-center gap-2",
+                                    "p-2 rounded-xl transition-all duration-200 shrink-0 cursor-pointer",
                                     value.trim()
-                                        ? "bg-white text-[#0A0A0B] shadow-lg shadow-white/10"
-                                        : "bg-white/[0.05] text-white/40"
+                                        ? "bg-white text-black shadow-lg shadow-white/10"
+                                        : "bg-white/[0.06] text-white/20"
                                 )}
+                                aria-label="Send message"
                             >
                                 {isTyping ? (
-                                    <LoaderIcon className="w-4 h-4 animate-[spin_2s_linear_infinite]" />
-                               ) : (
+                                    <LemniscateLoader size="sm" className="text-current" />
+                                ) : (
                                     <SendIcon className="w-4 h-4" />
                                 )}
-                                <span>Send</span>
                             </motion.button>
                         </div>
                     </motion.div>
-                </motion.div>
+                </div>
             </div>
 
+            {/* Typing indicator */}
             <AnimatePresence>
                 {isTyping && (
                     <motion.div 
-                        className="fixed bottom-8 mx-auto transform -translate-x-1/2 backdrop-blur-2xl bg-white/[0.02] rounded-full px-4 py-2 shadow-lg border border-white/[0.05]"
-                        initial={{ opacity: 0, y: 20 }}
+                        className="fixed bottom-24 left-[var(--sidebar-width)] right-0 z-40 flex justify-center pointer-events-none"
+                        initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 20 }}
+                        exit={{ opacity: 0, y: 10 }}
                     >
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-7 rounded-full bg-white/[0.05] flex items-center justify-center text-center">
-                                <span className="text-xs font-medium text-white/90 mb-0.5">zap</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-white/70">
-                                <span>Thinking</span>
-                                <TypingDots />
-                            </div>
+                        <div className="backdrop-blur-xl bg-white/[0.03] rounded-full px-4 py-1.5 border border-white/[0.05] flex items-center gap-2">
+                            <span className="text-[11px] text-white/50 font-medium">Relay AI is thinking</span>
+                            <TypingDots />
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
-
-            {inputFocused && (
-                <motion.div 
-                    className="fixed w-[50rem] h-[50rem] rounded-full pointer-events-none z-0 opacity-[0.02] bg-gradient-to-r from-white via-zinc-200 to-zinc-400 blur-[96px]"
-                    animate={{
-                        x: mousePosition.x - 400,
-                        y: mousePosition.y - 400,
-                    }}
-                    transition={{
-                        type: "spring",
-                        damping: 25,
-                        stiffness: 150,
-                        mass: 0.5,
-                    }}
-                />
-            )}
 
             {/* Confirmation Fallback Modal */}
             <AnimatePresence>

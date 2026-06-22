@@ -24,7 +24,7 @@ export const ANTHROPIC_MODELS: ModelConfig[] = [
   { model: "claude-3-5-haiku-latest", maxContextTokens: 200000, supportsTools: true, supportsStreaming: true }
 ];
 
-export function getProvider(provider: string, apiKey: string, model: string): AiProvider {
+export function getProvider(provider: string, apiKey: string, model: string, baseURL?: string): AiProvider {
   const normProvider = provider.toLowerCase();
   switch (normProvider) {
     case "system":
@@ -39,6 +39,9 @@ export function getProvider(provider: string, apiKey: string, model: string): Ai
     case "openrouter":
       return new OpenRouterProvider(apiKey, model);
     default:
+      if (baseURL) {
+        return new OpenAIProvider(apiKey, model, baseURL);
+      }
       throw new Error(`Unsupported provider: ${provider}`);
   }
 }

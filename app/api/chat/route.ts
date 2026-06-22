@@ -5,6 +5,8 @@ import { CommandRouter } from "@/lib/ai/orchestration/command-router";
 import { ChatBackgroundProcessor } from "@/lib/ai/orchestration/chat-background";
 import { sanitizeFirestore } from "@/lib/utils/sanitize-firestore";
 import { decryptToken } from "@/lib/security/crypto";
+import { getModelConfig } from "@/lib/ai/providers/provider-router";
+import { buildRCP } from "@/lib/rcp/compiler";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +14,7 @@ export async function POST(req: Request) {
   try {
     const userId = await getAuthenticatedUserOrThrow();
     const body = await req.json();
-    const { message, conversationId, provider: reqProvider, model: reqModel } = body;
+    const { message, conversationId, provider: reqProvider, model: reqModel, attachments } = body;
 
     if (!message || typeof message !== "string" || !message.trim()) {
       return NextResponse.json({ success: false, error: "Message is required" }, { status: 400 });
@@ -143,13 +145,19 @@ export async function POST(req: Request) {
     const userSequenceNumber = currentMessagesSnap.size + 1;
     const assistantSequenceNumber = userSequenceNumber + 1;
 
-    // 2. Persist user message to Firestore subcollection BEFORE running AI
     const userMsgRef = convRef.collection("messages").doc();
     const userMsgData = sanitizeFirestore({
       conversationId: activeConversationId,
       userId,
       role: "user",
       content: message.trim(),
+      metadata: {
+        attachments: attachments ? attachments.map((att: any) => ({
+          name: att.name,
+          size: att.size,
+          type: att.type
+        })) : []
+      },
       sequenceNumber: userSequenceNumber,
       createdAt: new Date().toISOString(),
     });
@@ -167,6 +175,7 @@ export async function POST(req: Request) {
 
     // 3. Look up credentials and Decrypt API key
     let apiKey = "";
+    let providerBaseURL = "";
     if (activeProvider === "system" || activeProvider === "mercury") {
       apiKey = process.env.MERCURY_API_KEY || "";
     } else {
@@ -182,6 +191,7 @@ export async function POST(req: Request) {
       }
 
       const keyData = keyDoc.data() || {};
+      providerBaseURL = keyData.baseURL || "";
       if (!keyData.encryptedApiKey) {
         return NextResponse.json({
           success: false,
@@ -205,10 +215,47 @@ export async function POST(req: Request) {
     }
 
     // 4. Execute AI response generation with conversation context and parameterized providers
-    let routeResult;
     const startTime = Date.now();
+    let fullQuery = message.trim();
+    if (attachments && attachments.length > 0) {
+      const fileContexts = attachments.map((file: any) => 
+        `[Attached File: ${file.name} (${file.size} bytes, type: ${file.type})]\n---\n${file.content}\n---`
+      ).join("\n\n");
+      fullQuery = `${fullQuery}\n\n${fileContexts}`;
+    }
+
+    let routeResult: any;
     try {
-      routeResult = await CommandRouter.route(userId, message.trim(), activeConversationId, activeProvider, activeModel, apiKey);
+      const modelConfig = getModelConfig(activeProvider, activeModel);
+      const startRcpTime = Date.now();
+      let rcpContext = "";
+      if (activeConversationId) {
+        const modelConfig = getModelConfig(activeProvider, activeModel);
+        rcpContext = await buildRCP(userId, activeConversationId, modelConfig.maxContextTokens);
+        
+        const { getCacheHitStatus } = await import("@/lib/rcp/compiler");
+        const cacheHit = getCacheHitStatus(userId, activeConversationId);
+        const tokenCount = Math.ceil(rcpContext.length / 4);
+        console.log("[RCP Runtime]", {
+          conversationId: activeConversationId,
+          provider: activeProvider,
+          model: activeModel,
+          cacheHit,
+          tokenCount,
+          generationTimeMs: Date.now() - startRcpTime
+        });
+      }
+
+      routeResult = await CommandRouter.route(
+        userId,
+        fullQuery,
+        activeConversationId,
+        activeProvider,
+        activeModel,
+        apiKey,
+        rcpContext,
+        providerBaseURL
+      );
     } catch (routeErr: any) {
       console.error(`CommandRouter execution failed for provider ${activeProvider}:`, routeErr);
       return NextResponse.json({
@@ -220,7 +267,32 @@ export async function POST(req: Request) {
     }
     const latencyMs = Date.now() - startTime;
 
-    const aiMessage = routeResult.summary || routeResult.message || routeResult.data?.message || "Command executed successfully.";
+    const intent = routeResult.intent || routeResult.data?.intent || "conversational_chat";
+    const isSwarm = intent !== "conversational_chat";
+    const aiMessage = isSwarm
+      ? "Swarm Activated: Initiating background research and executing database workflows in this thread..."
+      : (routeResult.summary || routeResult.message || routeResult.data?.message || "Command executed successfully.");
+
+    // Trigger SwarmExecutor in background if it's an action command
+    if (isSwarm) {
+      try {
+        const { SwarmExecutor } = await import("@/lib/ai/agents/swarm-executor");
+        const modelConfig = getModelConfig(activeProvider, activeModel);
+        const rcpContext = await buildRCP(userId, activeConversationId, modelConfig.maxContextTokens);
+        SwarmExecutor.execute(
+          userId,
+          activeConversationId,
+          fullQuery,
+          rcpContext,
+          activeProvider,
+          activeModel,
+          apiKey,
+          true // isChat = true
+        );
+      } catch (swarmErr) {
+        console.error("Failed to run SwarmExecutor: ", swarmErr);
+      }
+    }
 
     // 5. Persist AI response message to Firestore subcollection BEFORE rendering
     const aiMsgRef = convRef.collection("messages").doc();
@@ -231,8 +303,8 @@ export async function POST(req: Request) {
       content: aiMessage,
       metadata: {
         intent: routeResult.intent || routeResult.data?.intent || "conversational_chat",
-        actions: routeResult.actions || [],
-        title: routeResult.title || "AI Response",
+        actions: isSwarm ? [] : (routeResult.actions || []), // Empty actions if swarm, run here!
+        title: isSwarm ? "Autonomous Swarm" : (routeResult.title || "AI Response"),
       },
       sequenceNumber: assistantSequenceNumber,
       createdAt: new Date().toISOString(),

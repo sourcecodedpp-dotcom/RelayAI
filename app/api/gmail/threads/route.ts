@@ -25,24 +25,46 @@ export async function GET(req: Request) {
 
     const gmail = await getGmailClient(userId);
 
-    // Build label filters based on folder
-    let q = query;
-    if (folder === "SENT") {
-      q = `${q} label:sent`.trim();
-    } else if (folder === "DRAFTS") {
-      q = `${q} label:draft`.trim();
-    } else {
-      q = `${q} label:inbox`.trim();
-    }
+    // Map folder to Gmail labelIds
+    const labelMap: Record<string, string[]> = {
+      INBOX: ["INBOX"],
+      SENT: ["SENT"],
+      DRAFTS: ["DRAFT"],
+    };
 
-    // List recent threads
+    const labelIds = labelMap[folder.toUpperCase()] || ["INBOX"];
+
+    // List recent threads: reserve 'q' exclusively for search queries, use labelIds for folders.
     const listResponse = await gmail.users.threads.list({
       userId: "me",
-      q: q || undefined,
-      maxResults: 20,
+      q: query || undefined,
+      labelIds,
+      maxResults: 25,
     });
 
     const threadsList = listResponse.data.threads || [];
+
+    // Retrieve granted scopes for debug logging
+    let scopes: string[] = [];
+    try {
+      const credentialsRes = await (gmail.context._options.auth as any).getAccessToken();
+      if (credentialsRes.credentials?.scope) {
+        scopes = credentialsRes.credentials.scope.split(" ");
+      }
+    } catch (scopeErr) {
+      console.warn("Failed to retrieve scopes for logging:", scopeErr);
+    }
+
+    // Gmail debug logging
+    console.log("[GMAIL DEBUG LOG]", {
+      folderRequested: folder,
+      labelIds,
+      qParam: query || undefined,
+      threadCount: threadsList.length,
+      googleStatusCode: listResponse.status,
+      grantedScopes: scopes,
+    });
+
     const threads = [];
 
     // Fetch details for each thread
@@ -101,7 +123,24 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json({ connected: true, threads });
-  } catch (error) {
+  } catch (error: any) {
+    const errMsg = error.message || "";
+    if (
+      errMsg.includes("invalid_grant") ||
+      errMsg.includes("expired or revoked") ||
+      error.status === 400 ||
+      error.status === 401 ||
+      error.code === 401 ||
+      error.code === "invalid_grant"
+    ) {
+      return NextResponse.json(
+        {
+          error: "Gmail Authorization Failure",
+          message: "Gmail connection has been revoked or expired. Please reconnect.",
+        },
+        { status: 401 }
+      );
+    }
     return handleApiError(error);
   }
 }

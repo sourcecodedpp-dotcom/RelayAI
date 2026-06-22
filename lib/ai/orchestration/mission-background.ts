@@ -149,7 +149,7 @@ export class MissionBackgroundProcessor {
   static async logEvent(
     userId: string,
     missionId: string,
-    type: "command" | "ai_output" | "opportunity" | "contact" | "follow_up" | "gmail_thread",
+    type: "command" | "ai_output" | "opportunity" | "contact" | "follow_up" | "gmail_thread" | "system",
     content: string,
     metadata: Record<string, any> = {}
   ): Promise<number> {

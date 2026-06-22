@@ -1,6 +1,8 @@
 import { db } from "@/lib/db/firestore";
 import { MemoryService } from "@/lib/ai/memory/memory";
 import { Message, ConversationMemory } from "@/types";
+import { buildRCP } from "@/lib/rcp/compiler";
+
 
 export interface StructuredContext {
   promptContextBlock: string;
@@ -213,8 +215,10 @@ export class ContextBuilder {
 
     contextSections.push("\n=== END CONVERSATION WORKSPACE CONTEXT ===");
 
+    const rcpContext = await buildRCP(userId, conversationId, maxContextTokens);
+
     return {
-      promptContextBlock: contextSections.join("\n"),
+      promptContextBlock: rcpContext,
       recentMessagesText: includedMessagesText || recentMessagesText,
       summary: conversationSummary,
     };
